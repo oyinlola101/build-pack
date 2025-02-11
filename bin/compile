@@ -7,28 +7,62 @@ CACHE_DIR=$2
 # Ensure the script is run in non-interactive mode
 export DEBIAN_FRONTEND=noninteractive
 
-# Configure dpkg and install dependencies
-dpkg --configure -a && \
-apt-get update && \
-apt-get install -y \
-  curl \
-  python3 python3-pip \
+# Install dependencies without superuser privileges
+echo "-----> Installing dependencies..."
+
+# Install Node Version Manager (nvm)
+export NVM_DIR="$BUILD_DIR/.nvm"
+mkdir -p $NVM_DIR
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
+export PATH="$NVM_DIR/versions/node/v16.13.0/bin:$PATH"
+source "$NVM_DIR/nvm.sh"
+
+# Install Node.js and Yarn
+nvm install 16.13.0
+nvm use 16.13.0
+npm install -g npm@9.7.2 yarn
+
+# Install additional dependencies
+echo "-----> Installing additional dependencies..."
+
+# Download and install Go (Golang)
+GO_VERSION="1.17.6"
+GO_TAR="go$GO_VERSION.linux-amd64.tar.gz"
+GO_URL="https://golang.org/dl/$GO_TAR"
+curl -LO "$GO_URL"
+tar -C "$BUILD_DIR" -xzf "$GO_TAR"
+export PATH="$BUILD_DIR/go/bin:$PATH"
+rm "$GO_TAR"
+
+# Install Python, Java, and other dependencies
+PYTHON_VERSION="3.8.10"
+PYTHON_DIR="$BUILD_DIR/python"
+mkdir -p $PYTHON_DIR
+curl -o $PYTHON_DIR/python.tgz https://www.python.org/ftp/python/$PYTHON_VERSION/Python-$PYTHON_VERSION.tgz
+tar -xzf $PYTHON_DIR/python.tgz -C $PYTHON_DIR
+cd $PYTHON_DIR/Python-$PYTHON_VERSION
+./configure --prefix=$PYTHON_DIR && make && make install
+export PATH="$PYTHON_DIR/bin:$PATH"
+cd $BUILD_DIR
+
+# Install Java (OpenJDK)
+apt-get update && apt-get install -y \
   default-jre default-jdk \
-  gcc g++ \
-  golang-go && \
-curl -fsSL https://deb.nodesource.com/setup_16.x | bash - && \
-apt-get install -y nodejs && \
-npm install -g npm@9.7.2 yarn && \
+  gcc g++ && \
 rm -rf /var/lib/apt/lists/*
 
-# Copy application code to build directory
-cp -r . "$BUILD_DIR"
+# Set up application directory
+echo "-----> Setting up application directory..."
+mkdir -p "$BUILD_DIR/app"
+cp -r . "$BUILD_DIR/app"
 
-# Change to the build directory
-cd "$BUILD_DIR"
+# Change to the application directory
+cd "$BUILD_DIR/app"
 
 # Install application dependencies using Yarn
+echo "-----> Installing application dependencies..."
 yarn install
+
 
 # Output a success message
 echo "-----> Oyin's Buildpack compilation complete "
