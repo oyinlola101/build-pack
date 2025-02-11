@@ -1,73 +1,82 @@
 #!/usr/bin/env bash
-# bin/compile <build-dir> <cache-dir> <env-dir>
 
 set -e
+set -o pipefail
+set -u
 
-BUILD_DIR=$1
-CACHE_DIR=$2
-ENV_DIR=$3
-VENDOR_DIR="$BUILD_DIR/.heroku/vendor"
+# Set build directory
+BUILD_DIR="${1:-/tmp/build}"
+CACHE_DIR="${2:-/tmp/cache}"
 
-function topic() {
-  echo "-----> $*"
-}
+export DEBIAN_FRONTEND=noninteractive
 
-function indent() {
-  c='s/^/       /'
-  case $(uname) in
-    Darwin) sed -l "$c";;
-    *)      sed -u "$c";;
-  esac
-}
+echo "-----> Installing dependencies in $BUILD_DIR ..."
 
-# Create vendor directory
-mkdir -p $VENDOR_DIR
-mkdir -p $BUILD_DIR/.profile.d
+#### Install Go (Golang) ###
+#GO_VERSION="1.17.6"
+#GO_DIR="$BUILD_DIR/go"
+#GO_TAR="go$GO_VERSION.linux-amd64.tar.gz"
+#GO_URL="https://golang.org/dl/$GO_TAR"
 
-topic "Installing build essentials from binary"
-# Instead of apt-get, we'll download pre-compiled binaries
-# or use the system's existing GCC
+#echo "-----> Installing Go $GO_VERSION..."
+#curl -LO "$GO_URL"
+#mkdir -p "$GO_DIR"
+#tar -C "$GO_DIR" --strip-components=1 -xzf "$GO_TAR"
+#export PATH="$GO_DIR/bin:$PATH"
+#rm "$GO_TAR"
 
-# Install Python from official source
-topic "Installing Python"
-PYTHON_VERSION="3.9.16"
-PYTHON_URL="https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz"
-
-curl -L $PYTHON_URL | tar xz -C $VENDOR_DIR
-cd $VENDOR_DIR/Python-${PYTHON_VERSION}
-./configure --prefix=$VENDOR_DIR/python
-make -j$(nproc)
-make install
-
-# Install Java from binary
-topic "Installing Java"
-JDK_VERSION="11.0.12"
+### Install Java (OpenJDK) ###
+JDK_VERSION="11"
+JDK_DIR="$BUILD_DIR/jdk"
 JDK_URL="https://api.adoptium.net/v3/binary/latest/$JDK_VERSION/ga/linux/x64/jdk/hotspot/normal/eclipse"
 
-curl -L $JDK_URL | tar xz -C $VENDOR_DIR
-mv $VENDOR_DIR/jdk* $VENDOR_DIR/java
+echo "-----> Installing Java (OpenJDK) $JDK_VERSION..."
+curl -L -o jdk.tar.gz "$JDK_URL"
+mkdir -p "$JDK_DIR"
+tar -xzf jdk.tar.gz -C "$JDK_DIR" --strip-components=1 || { echo "Error extracting JDK"; exit 1; }
+export JAVA_HOME="$JDK_DIR"
+export PATH="$JAVA_HOME/bin:$PATH"
+rm jdk.tar.gz
 
-# Set up environment
-cat << EOF > $BUILD_DIR/.profile.d/000_configure_env.sh
-export PATH="\$HOME/.heroku/vendor/python/bin:\$HOME/.heroku/vendor/java/bin:\$PATH"
-export JAVA_HOME="\$HOME/.heroku/vendor/java"
-export PYTHONPATH="\$HOME"
-export LD_LIBRARY_PATH="\$HOME/.heroku/vendor/python/lib:\$LD_LIBRARY_PATH"
-EOF
+### Install Python ###
+PYTHON_VERSION="3.8.10"
+PYTHON_DIR="$BUILD_DIR/python"
 
-# Install pip and any requirements
-topic "Installing pip and dependencies"
-$VENDOR_DIR/python/bin/python3 -m ensurepip
-if [ -f $BUILD_DIR/requirements.txt ]; then
-    $VENDOR_DIR/python/bin/pip3 install -r $BUILD_DIR/requirements.txt | indent
-fi
+echo "-----> Installing Python $PYTHON_VERSION..."
+mkdir -p "$PYTHON_DIR"
+curl -o "$PYTHON_DIR/python.tgz" "https://www.python.org/ftp/python/$PYTHON_VERSION/Python-$PYTHON_VERSION.tgz"
+tar -xzf "$PYTHON_DIR/python.tgz" -C "$PYTHON_DIR"
+cd "$PYTHON_DIR/Python-$PYTHON_VERSION"
+./configure --prefix="$PYTHON_DIR"
+make -j "$(nproc)" && make install
+export PATH="$PYTHON_DIR/bin:$PATH"
+cd "$BUILD_DIR"
+rm "$PYTHON_DIR/python.tgz"
 
-# Clean up to reduce slug size
-topic "Cleaning up"
-rm -rf $VENDOR_DIR/Python-${PYTHON_VERSION}
-find $VENDOR_DIR -type f -name '*.pyc' -delete
-find $VENDOR_DIR -type d -name '__pycache__' -exec rm -rf {} +
+### Cleanup: Reduce Slug Size ###
+echo "-----> Cleaning up unnecessary files to reduce slug size..."
 
-topic "Installation Complete!"
-topic "Python version: $($VENDOR_DIR/python/bin/python3 --version)"
-topic "Java version: $($VENDOR_DIR/java/bin/java -version 2>&1 | head -n1)"
+# Remove unneeded Go files
+#rm -rf "$GO_DIR/pkg" "$GO_DIR/src" "$GO_DIR/misc"
+#rm -rf "$GO_DIR/bin/go"  # Keep only 'go' binary
+
+# Remove unneeded Python files
+#rm -rf "$PYTHON_DIR/Python-$PYTHON_VERSION"
+#find "$PYTHON_DIR" -name '__pycache__' -type d -exec rm -rf {} +
+#"$PYTHON_DIR/bin/python3" -m pip cache purge
+#rm -rf "$PYTHON_DIR/lib/python3.8/test"
+#rm -rf "$PYTHON_DIR/lib/python3.8/lib2to3"
+
+# Remove unnecessary Java files
+#rm -rf "$JDK_DIR/man" "$JDK_DIR/lib/src.zip"
+
+# Remove temp files
+#rm -rf /tmp/* "$BUILD_DIR/tmp/*"
+
+### Verify installations ###
+echo "-----> Installed Versions:"
+#echo "Go: $(go version || echo 'Go not found')"
+echo "Java: $(java -version 2>&1 | head -n 1 || echo 'Java not found')"
+echo "Python: $(python3 --version || echo 'Python not found')"
+
+echo "-----> Build complete in $BUILD_DIR"
