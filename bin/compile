@@ -1,47 +1,44 @@
 #!/usr/bin/env bash
 
-set -e
-set -o pipefail
-set -u
+set -e  # Exit on first error
+set -o pipefail  # Fail on first command in a pipeline
+set -u  # Treat unset variables as an error
 
-# Set build directory
+# Set variables
 BUILD_DIR="${1:-/tmp/build}"
 CACHE_DIR="${2:-/tmp/cache}"
 
+# Ensure non-interactive installation
 export DEBIAN_FRONTEND=noninteractive
 
-echo "-----> Installing dependencies in $BUILD_DIR ..."
+echo "-----> Installing dependencies..."
 
-### Install Go (Golang) ###
+# Install Golang
 #GO_VERSION="1.17.6"
-#GO_DIR="$BUILD_DIR/go"
 #GO_TAR="go$GO_VERSION.linux-amd64.tar.gz"
 #GO_URL="https://golang.org/dl/$GO_TAR"
-
 #echo "-----> Installing Go $GO_VERSION..."
 #curl -LO "$GO_URL"
-#mkdir -p "$GO_DIR"
-#tar -C "$GO_DIR" --strip-components=1 -xzf "$GO_TAR"
-#export PATH="$GO_DIR/bin:$PATH"
+#tar -C "$BUILD_DIR" -xzf "$GO_TAR"
+#export PATH="$BUILD_DIR/go/bin:$PATH"
 #rm "$GO_TAR"
 
-### Install Java (OpenJDK) ###
-JDK_VERSION="11"
-JDK_DIR="$BUILD_DIR/jdk"
-JDK_URL="https://api.adoptium.net/v3/binary/latest/$JDK_VERSION/ga/linux/x64/jdk/hotspot/normal/eclipse"
-
+# Install Java (OpenJDK)
+JDK_VERSION="11.0.11"
+JDK_BUILD="9"
+JDK_DIR="$BUILD_DIR/jdk-$JDK_VERSION"
+JDK_URL="https://github.com/adoptium/temurin11-binaries/releases/download/jdk-${JDK_VERSION}+${JDK_BUILD}/OpenJDK11U-jdk_x64_linux_hotspot_${JDK_VERSION}_${JDK_BUILD}.tar.gz"
 echo "-----> Installing Java (OpenJDK) $JDK_VERSION..."
 curl -L -o jdk.tar.gz "$JDK_URL"
 mkdir -p "$JDK_DIR"
-tar -xzf jdk.tar.gz -C "$JDK_DIR" --strip-components=1 || { echo "Error extracting JDK"; exit 1; }
+tar -xzf jdk.tar.gz -C "$JDK_DIR" --strip-components=1
 export JAVA_HOME="$JDK_DIR"
 export PATH="$JAVA_HOME/bin:$PATH"
 rm jdk.tar.gz
 
-### Install Python ###
+# Install Python
 PYTHON_VERSION="3.8.10"
 PYTHON_DIR="$BUILD_DIR/python"
-
 echo "-----> Installing Python $PYTHON_VERSION..."
 mkdir -p "$PYTHON_DIR"
 curl -o "$PYTHON_DIR/python.tgz" "https://www.python.org/ftp/python/$PYTHON_VERSION/Python-$PYTHON_VERSION.tgz"
@@ -53,12 +50,44 @@ export PATH="$PYTHON_DIR/bin:$PATH"
 cd "$BUILD_DIR"
 rm "$PYTHON_DIR/python.tgz"
 
+### Cleanup: Reduce Slug Size Safely ###
+echo "-----> Cleaning up unnecessary files to reduce slug size..."
 
+# Remove unneeded Go files
+#rm -rf "$BUILD_DIR/go/pkg" "$BUILD_DIR/go/src" "$BUILD_DIR/go/misc"
+#rm -rf "$BUILD_DIR/go/bin/godoc" "$BUILD_DIR/go/bin/gofmt"
+
+# Remove unnecessary Java files
+rm -rf "$JDK_DIR/demo" "$JDK_DIR/sample" "$JDK_DIR/man" "$JDK_DIR/lib/src.zip"
+
+# Verify Python is installed before cleaning up
+if [ -x "$PYTHON_DIR/bin/python3" ]; then
+    echo "Python is installed, proceeding with cleanup..."
+    find "$PYTHON_DIR" -name '__pycache__' -type d -exec rm -rf {} +
+    rm -rf "$PYTHON_DIR/lib/python3.8/test"
+    rm -rf "$PYTHON_DIR/lib/python3.8/lib2to3"
+    rm -rf "$PYTHON_DIR/lib/python3.8/ensurepip"
+    rm -rf "$PYTHON_DIR/lib/python3.8/idlelib"
+    rm -rf "$PYTHON_DIR/lib/python3.8/tkinter"
+
+    # Purge pip cache safely
+    if "$PYTHON_DIR/bin/python3" -m pip cache dir &>/dev/null; then
+        "$PYTHON_DIR/bin/python3" -m pip cache purge || true
+    fi
+else
+    echo "Python installation not found! Skipping cleanup."
+fi
+
+# Remove temp files
+rm -rf /tmp/* "$BUILD_DIR/tmp/*"
+
+echo "-----> Cleanup complete."
 
 ### Verify installations ###
 echo "-----> Installed Versions:"
-#echo "Go: $(go version)"
-echo "Java: $(java -version)"
-echo "Python: $(python3 --version)"
+#echo "Go: $(go version || echo 'Go not found')"
+echo "Java: $(java -version 2>&1 | head -n 1 || echo 'Java not found')"
+echo "Python: $(python3 --version || echo 'Python not found')"
 
-echo "-----> Build complete in $BUILD_DIR"
+
+echo "-----> Buildpack compilation complete"
