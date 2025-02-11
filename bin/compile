@@ -6,6 +6,7 @@ set -e
 BUILD_DIR=$1
 CACHE_DIR=$2
 ENV_DIR=$3
+VENDOR_DIR="$BUILD_DIR/.heroku/vendor"
 
 function topic() {
   echo "-----> $*"
@@ -19,54 +20,54 @@ function indent() {
   esac
 }
 
-# Store which versions we're installing
-APT_CACHE_DIR="$CACHE_DIR/apt/cache"
-APT_STATE_DIR="$CACHE_DIR/apt/state"
-APT_SOURCELIST_DIR="$CACHE_DIR/apt/sources"   
-
-mkdir -p "$APT_CACHE_DIR/archives/partial"
-mkdir -p "$APT_STATE_DIR/lists/partial"
-mkdir -p "$APT_SOURCELIST_DIR"
-
-# Install basic build tools
-topic "Installing build tools"
-apt-get update
-apt-get install -y build-essential gcc g++ make cmake | indent
-
-# Install Python
-topic "Installing Python"
-PYTHON_VERSION="3.9.16"
-apt-get install -y python3.9 python3.9-dev python3-pip python3.9-venv | indent
-
-# Create and activate virtual environment
-python3.9 -m venv $BUILD_DIR/.venv
-source $BUILD_DIR/.venv/bin/activate
-
-# Install Java
-topic "Installing Java"
-apt-get install -y openjdk-11-jdk | indent
-
-# Set environment variables that will persist
+# Create vendor directory
+mkdir -p $VENDOR_DIR
 mkdir -p $BUILD_DIR/.profile.d
 
-cat << EOF > $BUILD_DIR/.profile.d/configure_env.sh
-export PATH="\$HOME/.venv/bin:\$PATH"
-export JAVA_HOME="/usr/lib/jvm/java-11-openjdk-amd64"
-export PATH="\$JAVA_HOME/bin:\$PATH"
+topic "Installing build essentials from binary"
+# Instead of apt-get, we'll download pre-compiled binaries
+# or use the system's existing GCC
+
+# Install Python from official source
+topic "Installing Python"
+PYTHON_VERSION="3.9.16"
+PYTHON_URL="https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz"
+
+curl -L $PYTHON_URL | tar xz -C $VENDOR_DIR
+cd $VENDOR_DIR/Python-${PYTHON_VERSION}
+./configure --prefix=$VENDOR_DIR/python
+make -j$(nproc)
+make install
+
+# Install Java from binary
+topic "Installing Java"
+JDK_VERSION="11.0.12"
+JDK_URL="https://github.com/adoptium/temurin11-binaries/releases/download/jdk-${JDK_VERSION}%2B7/OpenJDK11U-jdk_x64_linux_hotspot_${JDK_VERSION}_7.tar.gz"
+
+curl -L $JDK_URL | tar xz -C $VENDOR_DIR
+mv $VENDOR_DIR/jdk* $VENDOR_DIR/java
+
+# Set up environment
+cat << EOF > $BUILD_DIR/.profile.d/000_configure_env.sh
+export PATH="\$HOME/.heroku/vendor/python/bin:\$HOME/.heroku/vendor/java/bin:\$PATH"
+export JAVA_HOME="\$HOME/.heroku/vendor/java"
 export PYTHONPATH="\$HOME"
+export LD_LIBRARY_PATH="\$HOME/.heroku/vendor/python/lib:\$LD_LIBRARY_PATH"
 EOF
 
-# Install any Python dependencies if requirements.txt exists
+# Install pip and any requirements
+topic "Installing pip and dependencies"
+$VENDOR_DIR/python/bin/python3 -m ensurepip
 if [ -f $BUILD_DIR/requirements.txt ]; then
-    topic "Installing Python dependencies"
-    pip install -r $BUILD_DIR/requirements.txt | indent
+    $VENDOR_DIR/python/bin/pip3 install -r $BUILD_DIR/requirements.txt | indent
 fi
 
-# Clean up cache to reduce slug size
+# Clean up to reduce slug size
 topic "Cleaning up"
-apt-get clean
-rm -rf $APT_CACHE_DIR/*
-rm -rf $APT_STATE_DIR/*
-rm -rf /var/lib/apt/lists/*.*
+rm -rf $VENDOR_DIR/Python-${PYTHON_VERSION}
+find $VENDOR_DIR -type f -name '*.pyc' -delete
+find $VENDOR_DIR -type d -name '__pycache__' -exec rm -rf {} +
 
-topic "Complete!"
+topic "Installation Complete!"
+topic "Python version: $($VENDOR_DIR/python/bin/python3 --version)"
+topic "Java version: $($VENDOR_DIR/java/bin/java -version 2>&1 | head -n1)"
