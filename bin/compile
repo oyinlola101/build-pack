@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+#!/usr/bin/env bash
 
 # Set variables
 BUILD_DIR=$1
@@ -14,10 +15,7 @@ echo "-----> Installing dependencies..."
 export NVM_DIR="$BUILD_DIR/.nvm"
 mkdir -p $NVM_DIR
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
-
-# Source nvm and add it to the path
 export PATH="$NVM_DIR/versions/node/v16.13.0/bin:$PATH"
-export NVM_DIR="$BUILD_DIR/.nvm"
 source "$NVM_DIR/nvm.sh"
 
 # Install Node.js and Yarn
@@ -66,5 +64,11 @@ cd "$BUILD_DIR/app"
 echo "-----> Installing application dependencies..."
 yarn install
 
+# Clean up unnecessary files
+echo "-----> Cleaning up unnecessary files..."
+rm -rf "$BUILD_DIR/go/pkg"
+rm -rf "$BUILD_DIR/python/Python-$PYTHON_VERSION"
+rm -rf "$BUILD_DIR/.nvm/.cache"
+
 # Output a success message
-echo "-----> Oyin's Buildpack compilation complete "
+echo "-----> Oyin compilation complete"
