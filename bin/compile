@@ -40,7 +40,7 @@ export PATH="$JAVA_HOME/bin:$PATH"
 rm jdk.tar.gz
 
 ### Install Python ###
-PYTHON_VERSION="3.8.10"
+PYTHON_VERSION="3.7.12"
 PYTHON_DIR="$BUILD_DIR/python"
 
 echo "-----> Installing Python $PYTHON_VERSION..."
