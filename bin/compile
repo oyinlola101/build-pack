@@ -69,17 +69,17 @@ export DEBIAN_FRONTEND=noninteractive
 echo "-----> Installing dependencies in $BUILD_DIR ..."
 
 ### Install Go (Golang) ###
-GO_VERSION="1.17.6"
-GO_DIR="$BUILD_DIR/go"
-GO_TAR="go$GO_VERSION.linux-amd64.tar.gz"
-GO_URL="https://golang.org/dl/$GO_TAR"
+#GO_VERSION="1.17.6"
+#GO_DIR="$BUILD_DIR/go"
+#GO_TAR="go$GO_VERSION.linux-amd64.tar.gz"
+#GO_URL="https://golang.org/dl/$GO_TAR"
 
-echo "-----> Installing Go $GO_VERSION..."
-curl -LO "$GO_URL"
-mkdir -p "$GO_DIR"
-tar -C "$GO_DIR" --strip-components=1 -xzf "$GO_TAR"
-export PATH="$GO_DIR/bin:$PATH"
-rm "$GO_TAR"
+#echo "-----> Installing Go $GO_VERSION..."
+#curl -LO "$GO_URL"
+#mkdir -p "$GO_DIR"
+#tar -C "$GO_DIR" --strip-components=1 -xzf "$GO_TAR"
+#export PATH="$GO_DIR/bin:$PATH"
+#rm "$GO_TAR"
 
 ### Install Java (OpenJDK) ###
 JDK_VERSION="11"
@@ -116,18 +116,28 @@ echo "-----> Cleaning up unnecessary files to reduce slug size..."
 #rm -rf "$GO_DIR/pkg" "$GO_DIR/src" "$GO_DIR/misc"
 #rm -rf "$GO_DIR/bin/go"  # Keep only 'go' binary
 
-# Remove unneeded Python files
-rm -rf "$PYTHON_DIR/Python-$PYTHON_VERSION"
-find "$PYTHON_DIR" -name '__pycache__' -type d -exec rm -rf {} +
-"$PYTHON_DIR/bin/python3" -m pip cache purge
-rm -rf "$PYTHON_DIR/lib/python3.8/test"
-rm -rf "$PYTHON_DIR/lib/python3.8/lib2to3"
+# Verify Python is installed before cleaning up
+if [ -x "$PYTHON_DIR/bin/python3" ]; then
+    echo "Python is installed, proceeding with cleanup..."
+    find "$PYTHON_DIR" -name '__pycache__' -type d -exec rm -rf {} +
+    rm -rf "$PYTHON_DIR/lib/python3.8/test"
+    rm -rf "$PYTHON_DIR/lib/python3.8/lib2to3"
+
+    # Purge pip cache safely
+    if "$PYTHON_DIR/bin/python3" -m pip cache dir &>/dev/null; then
+        "$PYTHON_DIR/bin/python3" -m pip cache purge || true
+    fi
+else
+    echo "Python installation not found! Skipping cleanup."
+fi
 
 # Remove unnecessary Java files
 rm -rf "$JDK_DIR/man" "$JDK_DIR/lib/src.zip"
 
 # Remove temp files
 rm -rf /tmp/* "$BUILD_DIR/tmp/*"
+
+echo "-----> Cleanup complete."
 
 
 ### Verify installations ###
