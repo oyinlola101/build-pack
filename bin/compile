@@ -26,9 +26,9 @@ echo "-----> Installing dependencies in $BUILD_DIR ..."
 #rm "$GO_TAR"
 
 ### Install Java (OpenJDK) ###
-JDK_VERSION="8u292-b10"
+JDK_VERSION="8"
 JDK_DIR="$BUILD_DIR/jdk"
-JDK_URL="https://github.com/adoptium/temurin8-binaries/releases/download/jdk${JDK_VERSION}/OpenJDK8U-jdk_x64_linux_hotspot_${JDK_VERSION}.tar.gz"
+JDK_URL="https://api.adoptium.net/v3/binary/latest/$JDK_VERSION/ga/linux/x64/jdk/hotspot/normal/eclipse"
 
 
 echo "-----> Installing Java (OpenJDK) $JDK_VERSION..."
