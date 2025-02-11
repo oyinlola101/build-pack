@@ -21,6 +21,7 @@ source "$NVM_DIR/nvm.sh"
 export PATH="$NVM_DIR/versions/node/v16.13.0/bin:$PATH"
 
 # Install Node.js and Yarn
+echo "-----> Installing Node.js and Yarn..."
 nvm install 16.13.0
 nvm use 16.13.0
 npm install -g npm@9.7.2 yarn
@@ -38,6 +39,7 @@ export PATH="$BUILD_DIR/go/bin:$PATH"
 rm "$GO_TAR"
 
 # Download and install Java (OpenJDK)
+echo "-----> Installing Java (OpenJDK)..."
 JDK_VERSION="11.0.11"
 JDK_BUILD="9"
 JDK_URL="https://github.com/adoptium/temurin11-binaries/releases/download/jdk-$JDK_VERSION%2B$JDK_BUILD/OpenJDK11U-jdk_x64_linux_hotspot_$JDK_VERSION\_$JDK_BUILD.tar.gz"
@@ -48,6 +50,7 @@ export PATH="$JAVA_HOME/bin:$PATH"
 rm jdk.tar.gz
 
 # Install Python
+echo "-----> Installing Python..."
 PYTHON_VERSION="3.8.10"
 PYTHON_DIR="$BUILD_DIR/python"
 mkdir -p $PYTHON_DIR
@@ -58,23 +61,20 @@ cd $PYTHON_DIR/Python-$PYTHON_VERSION
 export PATH="$PYTHON_DIR/bin:$PATH"
 cd $BUILD_DIR
 
+# Add Python binaries to PATH to avoid warnings
+echo "-----> Adding Python binaries to PATH..."
+export PATH="$PYTHON_DIR/bin:$PATH"
+
 # Set up application directory
 echo "-----> Setting up application directory..."
 mkdir -p "$BUILD_DIR/app"
 rsync -a --exclude="$BUILD_DIR/app" . "$BUILD_DIR/app/"
 
+# Verify application directory setup
+echo "-----> Verifying application directory setup..."
+ls -al "$BUILD_DIR/app"
+
 # Change to the application directory
-cd "$BUILD_DIR/app"
-
-# Install application dependencies using Yarn
-echo "-----> Installing application dependencies..."
-yarn install
-
-# Clean up unnecessary files
-echo "-----> Cleaning up unnecessary files..."
-rm -rf "$BUILD_DIR/go/pkg"
-rm -rf "$BUILD_DIR/python/Python-$PYTHON_VERSION"
-rm -rf "$BUILD_DIR/.nvm/.cache"
 
 # Output a success message
 echo "-----> Buildpack compilation complete"
