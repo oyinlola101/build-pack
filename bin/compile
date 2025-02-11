@@ -26,7 +26,7 @@ echo "-----> Installing dependencies in $BUILD_DIR ..."
 #rm "$GO_TAR"
 
 ### Install Java (OpenJDK) ###
-JDK_VERSION="11"
+JDK_VERSION="8u292-b10"
 JDK_DIR="$BUILD_DIR/jdk"
 JDK_URL="https://api.adoptium.net/v3/binary/latest/$JDK_VERSION/ga/linux/x64/jdk/hotspot/normal/eclipse"
 
