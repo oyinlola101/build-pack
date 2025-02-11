@@ -14,12 +14,12 @@ echo "-----> Installing dependencies..."
 export NVM_DIR="$BUILD_DIR/.nvm"
 mkdir -p $NVM_DIR
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
-export PATH="$NVM_DIR/versions/node/v16.15.0/bin:$PATH"
+export PATH="$NVM_DIR/versions/node/v16.13.0/bin:$PATH"
 source "$NVM_DIR/nvm.sh"
 
 # Install Node.js and Yarn
-nvm install 16.15.0
-nvm use 16.15.0
+nvm install 16.13.0
+nvm use 16.13.0
 npm install -g npm@9.7.2 yarn
 
 # Install additional dependencies
@@ -42,11 +42,14 @@ curl -o $PYTHON_DIR/python.tgz https://www.python.org/ftp/python/$PYTHON_VERSION
 tar -xzf $PYTHON_DIR/python.tgz -C $PYTHON_DIR
 cd $PYTHON_DIR/Python-$PYTHON_VERSION
 ./configure --prefix=$PYTHON_DIR && make && make install
-export PATH="$PYTHON_DIR/bin:$PATH"
+export PATH="$PYTHON_DIR/bin:$PATH:$PATH"
 cd $BUILD_DIR
 
-# Install Java (OpenJDK)
-apt-get update && apt-get install -y \
+# Install Java (OpenJDK) and other dependencies using a workaround
+echo "-----> Installing Java (OpenJDK) and other dependencies..."
+echo "deb [trusted=yes] http://archive.ubuntu.com/ubuntu/ focal main universe" > /etc/apt/sources.list.d/focal.list
+apt-get update -o Dir::Etc::sourcelist="sources.list.d/focal.list" -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0"
+apt-get install -y \
   default-jre default-jdk \
   gcc g++ && \
 rm -rf /var/lib/apt/lists/*
@@ -68,6 +71,9 @@ echo "-----> Cleaning up unnecessary files..."
 rm -rf "$BUILD_DIR/go/pkg"
 rm -rf "$BUILD_DIR/python/Python-$PYTHON_VERSION"
 rm -rf "$BUILD_DIR/.nvm/.cache"
+
+# Output a success message
+echo "-----> Buildpack compilation complete"
 
 # Output a success message
 echo "-----> Oyin compilation complete"
