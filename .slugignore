@@ -4,3 +4,11 @@
 /tmp
 node_modules/
 build/
+*.log
+*.tar.gz
+/tmp/*
+$BUILD_DIR/tmp/*
+$BUILD_DIR/.cache/*
+$BUILD_DIR/.npm/*
+$BUILD_DIR/.heroku/*
+$BUILD_DIR/app/node_modules/*
