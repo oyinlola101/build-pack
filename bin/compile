@@ -54,9 +54,85 @@ export PATH="$PYTHON_DIR/bin:$PATH"
 cd "$BUILD_DIR"
 rm "$PYTHON_DIR/python.tgz"
 
+#!/usr/bin/env bash
+
+set -e
+set -o pipefail
+set -u
+
+# Set build directory
+BUILD_DIR="${1:-/tmp/build}"
+CACHE_DIR="${2:-/tmp/cache}"
+
+export DEBIAN_FRONTEND=noninteractive
+
+echo "-----> Installing dependencies in $BUILD_DIR ..."
+
+### Install Go (Golang) ###
+GO_VERSION="1.17.6"
+GO_DIR="$BUILD_DIR/go"
+GO_TAR="go$GO_VERSION.linux-amd64.tar.gz"
+GO_URL="https://golang.org/dl/$GO_TAR"
+
+echo "-----> Installing Go $GO_VERSION..."
+curl -LO "$GO_URL"
+mkdir -p "$GO_DIR"
+tar -C "$GO_DIR" --strip-components=1 -xzf "$GO_TAR"
+export PATH="$GO_DIR/bin:$PATH"
+rm "$GO_TAR"
+
+### Install Java (OpenJDK) ###
+JDK_VERSION="11"
+JDK_DIR="$BUILD_DIR/jdk"
+JDK_URL="https://api.adoptium.net/v3/binary/latest/$JDK_VERSION/ga/linux/x64/jdk/hotspot/normal/eclipse"
+
+echo "-----> Installing Java (OpenJDK) $JDK_VERSION..."
+curl -L -o jdk.tar.gz "$JDK_URL"
+mkdir -p "$JDK_DIR"
+tar -xzf jdk.tar.gz -C "$JDK_DIR" --strip-components=1 || { echo "Error extracting JDK"; exit 1; }
+export JAVA_HOME="$JDK_DIR"
+export PATH="$JAVA_HOME/bin:$PATH"
+rm jdk.tar.gz
+
+### Install Python ###
+PYTHON_VERSION="3.8.10"
+PYTHON_DIR="$BUILD_DIR/python"
+
+echo "-----> Installing Python $PYTHON_VERSION..."
+mkdir -p "$PYTHON_DIR"
+curl -o "$PYTHON_DIR/python.tgz" "https://www.python.org/ftp/python/$PYTHON_VERSION/Python-$PYTHON_VERSION.tgz"
+tar -xzf "$PYTHON_DIR/python.tgz" -C "$PYTHON_DIR"
+cd "$PYTHON_DIR/Python-$PYTHON_VERSION"
+./configure --prefix="$PYTHON_DIR"
+make -j "$(nproc)" && make install
+export PATH="$PYTHON_DIR/bin:$PATH"
+cd "$BUILD_DIR"
+rm "$PYTHON_DIR/python.tgz"
+
+### Cleanup: Reduce Slug Size ###
+echo "-----> Cleaning up unnecessary files to reduce slug size..."
+
+# Remove unneeded Go files
+#rm -rf "$GO_DIR/pkg" "$GO_DIR/src" "$GO_DIR/misc"
+#rm -rf "$GO_DIR/bin/go"  # Keep only 'go' binary
+
+# Remove unneeded Python files
+rm -rf "$PYTHON_DIR/Python-$PYTHON_VERSION"
+find "$PYTHON_DIR" -name '__pycache__' -type d -exec rm -rf {} +
+"$PYTHON_DIR/bin/python3" -m pip cache purge
+rm -rf "$PYTHON_DIR/lib/python3.8/test"
+rm -rf "$PYTHON_DIR/lib/python3.8/lib2to3"
+
+# Remove unnecessary Java files
+rm -rf "$JDK_DIR/man" "$JDK_DIR/lib/src.zip"
+
+# Remove temp files
+rm -rf /tmp/* "$BUILD_DIR/tmp/*"
+
+
 ### Verify installations ###
 echo "-----> Installed Versions:"
-echo "Go: $(go version)"
+#echo "Go: $(go version)"
 echo "Java: $(java -version)"
 echo "Python: $(python3 --version)"
 
