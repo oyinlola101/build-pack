@@ -42,7 +42,7 @@ make install
 # Install Java from binary
 topic "Installing Java"
 JDK_VERSION="11.0.12"
-JDK_URL="https://github.com/adoptium/temurin11-binaries/releases/download/jdk-${JDK_VERSION}%2B7/OpenJDK11U-jdk_x64_linux_hotspot_${JDK_VERSION}_7.tar.gz"
+JDK_URL="https://api.adoptium.net/v3/binary/latest/$JDK_VERSION/ga/linux/x64/jdk/hotspot/normal/eclipse"
 
 curl -L $JDK_URL | tar xz -C $VENDOR_DIR
 mv $VENDOR_DIR/jdk* $VENDOR_DIR/java
