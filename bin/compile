@@ -109,35 +109,6 @@ export PATH="$PYTHON_DIR/bin:$PATH"
 cd "$BUILD_DIR"
 rm "$PYTHON_DIR/python.tgz"
 
-### Cleanup: Reduce Slug Size ###
-echo "-----> Cleaning up unnecessary files to reduce slug size..."
-
-# Remove unneeded Go files
-#rm -rf "$GO_DIR/pkg" "$GO_DIR/src" "$GO_DIR/misc"
-#rm -rf "$GO_DIR/bin/go"  # Keep only 'go' binary
-
-# Verify Python is installed before cleaning up
-if [ -x "$PYTHON_DIR/bin/python3" ]; then
-    echo "Python is installed, proceeding with cleanup..."
-    find "$PYTHON_DIR" -name '__pycache__' -type d -exec rm -rf {} +
-    rm -rf "$PYTHON_DIR/lib/python3.8/test"
-    rm -rf "$PYTHON_DIR/lib/python3.8/lib2to3"
-
-    # Purge pip cache safely
-    if "$PYTHON_DIR/bin/python3" -m pip cache dir &>/dev/null; then
-        "$PYTHON_DIR/bin/python3" -m pip cache purge || true
-    fi
-else
-    echo "Python installation not found! Skipping cleanup."
-fi
-
-# Remove unnecessary Java files
-rm -rf "$JDK_DIR/man" "$JDK_DIR/lib/src.zip"
-
-# Remove temp files
-rm -rf /tmp/* "$BUILD_DIR/tmp/*"
-
-echo "-----> Cleanup complete."
 
 
 ### Verify installations ###
