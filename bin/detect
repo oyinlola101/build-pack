@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 # bin/detect <build-dir>
 
-echo "Chrome for Testing By Oyin"
+echo "Environment config By Oyin"
 exit 0
