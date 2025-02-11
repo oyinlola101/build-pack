@@ -21,7 +21,7 @@ echo "-----> Installing dependencies in $BUILD_DIR ..."
 
 #echo "-----> Installing Go $GO_VERSION..."
 #curl -LO "$GO_URL"
-mkdir -p "$GO_DIR"
+#mkdir -p "$GO_DIR"
 #tar -C "$GO_DIR" --strip-components=1 -xzf "$GO_TAR"
 #export PATH="$GO_DIR/bin:$PATH"
 #rm "$GO_TAR"
