@@ -25,16 +25,19 @@ rm "$GO_TAR"
 
 # Install Java (OpenJDK)
 JDK_VERSION="11.0.11"
-JDK_BUILD="9"
 JDK_DIR="$BUILD_DIR/jdk-$JDK_VERSION"
-JDK_URL="https://github.com/adoptium/temurin11-binaries/releases/download/jdk-${JDK_VERSION}+${JDK_BUILD}/OpenJDK11U-jdk_x64_linux_hotspot_${JDK_VERSION}_${JDK_BUILD}.tar.gz"
+JDK_URL="https://aka.ms/download-jdk/microsoft-jdk-11.0.11-linux-x64.tar.gz"
+
 echo "-----> Installing Java (OpenJDK) $JDK_VERSION..."
 curl -L -o jdk.tar.gz "$JDK_URL"
+
 mkdir -p "$JDK_DIR"
-tar -xzf jdk.tar.gz -C "$JDK_DIR" --strip-components=1
+tar -xzf jdk.tar.gz -C "$JDK_DIR" --strip-components=1 || { echo "Error extracting JDK"; exit 1; }
+
 export JAVA_HOME="$JDK_DIR"
 export PATH="$JAVA_HOME/bin:$PATH"
 rm jdk.tar.gz
+
 
 # Install Python
 PYTHON_VERSION="3.8.10"
