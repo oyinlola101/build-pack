@@ -1,3 +1,8 @@
 .github/
-bin/test.sh
 Dockerfile
+*.log
+/doc
+/tests
+/tmp
+node_modules/
+
