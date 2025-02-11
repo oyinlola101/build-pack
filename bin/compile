@@ -24,12 +24,12 @@ export PATH="$BUILD_DIR/go/bin:$PATH"
 rm "$GO_TAR"
 
 # Install Java (OpenJDK)
-JDK_VERSION="11.0.11"
+JDK_VERSION="11"
 JDK_DIR="$BUILD_DIR/jdk-$JDK_VERSION"
-JDK_URL="https://aka.ms/download-jdk/microsoft-jdk-11.0.11-linux-x64.tar.gz"
+JDK_URL="https://api.adoptium.net/v3/binary/latest/$JDK_VERSION/ga/linux/x64/jdk/hotspot/normal/eclipse"
 
 echo "-----> Installing Java (OpenJDK) $JDK_VERSION..."
-curl -L -o jdk.tar.gz "$JDK_URL"
+curl -L -o jdk.tar.gz "$JDK_URL" || { echo "Error downloading JDK"; exit 1; }
 
 mkdir -p "$JDK_DIR"
 tar -xzf jdk.tar.gz -C "$JDK_DIR" --strip-components=1 || { echo "Error extracting JDK"; exit 1; }
@@ -37,6 +37,7 @@ tar -xzf jdk.tar.gz -C "$JDK_DIR" --strip-components=1 || { echo "Error extracti
 export JAVA_HOME="$JDK_DIR"
 export PATH="$JAVA_HOME/bin:$PATH"
 rm jdk.tar.gz
+
 
 
 # Install Python
