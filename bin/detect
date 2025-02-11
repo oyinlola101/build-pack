@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
-# bin/detect <build-dir>
 
-echo "Environment config By Oyin"
-exit 0
+# Check for a file (e.g., package.json) that indicates this buildpack should be used
+if [ -f package.json ]; then
+  echo "Environment config By Oyin"
+  exit 0
+else
+  exit 1
+fi
+
+
