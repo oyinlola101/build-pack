@@ -98,45 +98,7 @@ make -j "$(nproc)"
 make install
 cd "$BUILD_DIR"
 
-### Aggressive cleanup to reduce slug size ###
-log "Cleaning up to reduce slug size..."
 
-# Clean Python installation
-rm -rf "$PYTHON_DIR/Python-$PYTHON_VERSION"
-find "$PYTHON_DIR" -name '*.pyc' -delete
-find "$PYTHON_DIR" -name '__pycache__' -type d -exec rm -rf {} +
-"$PYTHON_DIR/bin/python3" -m pip cache purge
-rm -rf "$PYTHON_DIR/lib/python3.8/test"
-rm -rf "$PYTHON_DIR/lib/python3.8/lib2to3"
-rm -rf "$PYTHON_DIR/lib/python3.8/idlelib"
-rm -rf "$PYTHON_DIR/lib/python3.8/ensurepip"
-rm -rf "$PYTHON_DIR/lib/python3.8/site-packages/pip"
-rm -rf "$PYTHON_DIR/lib/python3.8/site-packages/setuptools"
-rm -rf "$PYTHON_DIR/share"
-
-# Clean Java installation
-rm -rf "$JDK_DIR/man"
-rm -rf "$JDK_DIR/lib/src.zip"
-rm -rf "$JDK_DIR/jmods"
-rm -rf "$JDK_DIR/legal"
-rm -rf "$JDK_DIR/demo"
-rm -rf "$JDK_DIR/sample"
-find "$JDK_DIR" -name '*.diz' -delete
-find "$JDK_DIR" -name '*.debug' -delete
-
-# Remove all documentation and unnecessary files
-find "$BUILD_DIR" -name '*.txt' -delete
-find "$BUILD_DIR" -name '*.html' -delete
-find "$BUILD_DIR" -name '*.md' -delete
-find "$BUILD_DIR" -name '*.rst' -delete
-find "$BUILD_DIR" -name '*.doc' -delete
-find "$BUILD_DIR" -name '*.docx' -delete
-find "$BUILD_DIR" -name '*.pdf' -delete
-
-# Remove temp files and caches
-rm -rf /tmp/*
-rm -rf "$BUILD_DIR/tmp"/*
-rm -rf "$CACHE_DIR/pip"
 
 ### Verify installations ###
 log "Installed Versions:"
