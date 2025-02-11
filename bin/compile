@@ -61,14 +61,14 @@ echo "-----> Cleaning up unnecessary files to reduce slug size..."
 #rm -rf "$GO_DIR/bin/go"  # Keep only 'go' binary
 
 # Remove unneeded Python files
-rm -rf "$PYTHON_DIR/Python-$PYTHON_VERSION"
-find "$PYTHON_DIR" -name '__pycache__' -type d -exec rm -rf {} +
-"$PYTHON_DIR/bin/python3" -m pip cache purge
-rm -rf "$PYTHON_DIR/lib/python3.8/test"
-rm -rf "$PYTHON_DIR/lib/python3.8/lib2to3"
+#rm -rf "$PYTHON_DIR/Python-$PYTHON_VERSION"
+#find "$PYTHON_DIR" -name '__pycache__' -type d -exec rm -rf {} +
+#"$PYTHON_DIR/bin/python3" -m pip cache purge
+#rm -rf "$PYTHON_DIR/lib/python3.8/test"
+#rm -rf "$PYTHON_DIR/lib/python3.8/lib2to3"
 
 # Remove unnecessary Java files
-rm -rf "$JDK_DIR/man" "$JDK_DIR/lib/src.zip"
+#rm -rf "$JDK_DIR/man" "$JDK_DIR/lib/src.zip"
 
 # Remove temp files
 rm -rf /tmp/* "$BUILD_DIR/tmp/*"
