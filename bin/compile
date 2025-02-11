@@ -1,44 +1,47 @@
 #!/usr/bin/env bash
 
-set -e  # Exit on first error
-set -o pipefail  # Fail on first command in a pipeline
-set -u  # Treat unset variables as an error
+set -e
+set -o pipefail
+set -u
 
-# Set variables
+# Set build directory
 BUILD_DIR="${1:-/tmp/build}"
 CACHE_DIR="${2:-/tmp/cache}"
 
-# Ensure non-interactive installation
 export DEBIAN_FRONTEND=noninteractive
 
-echo "-----> Installing dependencies..."
+echo "-----> Installing dependencies in $BUILD_DIR ..."
 
-# Install Golang
+#### Install Go (Golang) ###
 #GO_VERSION="1.17.6"
+#GO_DIR="$BUILD_DIR/go"
 #GO_TAR="go$GO_VERSION.linux-amd64.tar.gz"
 #GO_URL="https://golang.org/dl/$GO_TAR"
+
 #echo "-----> Installing Go $GO_VERSION..."
 #curl -LO "$GO_URL"
-#tar -C "$BUILD_DIR" -xzf "$GO_TAR"
-#export PATH="$BUILD_DIR/go/bin:$PATH"
+#mkdir -p "$GO_DIR"
+#tar -C "$GO_DIR" --strip-components=1 -xzf "$GO_TAR"
+#export PATH="$GO_DIR/bin:$PATH"
 #rm "$GO_TAR"
 
-# Install Java (OpenJDK)
-JDK_VERSION="11.0.11"
-JDK_BUILD="9"
-JDK_DIR="$BUILD_DIR/jdk-$JDK_VERSION"
-JDK_URL="https://github.com/adoptium/temurin11-binaries/releases/download/jdk-${JDK_VERSION}+${JDK_BUILD}/OpenJDK11U-jdk_x64_linux_hotspot_${JDK_VERSION}_${JDK_BUILD}.tar.gz"
+### Install Java (OpenJDK) ###
+JDK_VERSION="11"
+JDK_DIR="$BUILD_DIR/jdk"
+JDK_URL="https://api.adoptium.net/v3/binary/latest/$JDK_VERSION/ga/linux/x64/jdk/hotspot/normal/eclipse"
+
 echo "-----> Installing Java (OpenJDK) $JDK_VERSION..."
 curl -L -o jdk.tar.gz "$JDK_URL"
 mkdir -p "$JDK_DIR"
-tar -xzf jdk.tar.gz -C "$JDK_DIR" --strip-components=1
+tar -xzf jdk.tar.gz -C "$JDK_DIR" --strip-components=1 || { echo "Error extracting JDK"; exit 1; }
 export JAVA_HOME="$JDK_DIR"
 export PATH="$JAVA_HOME/bin:$PATH"
 rm jdk.tar.gz
 
-# Install Python
+### Install Python ###
 PYTHON_VERSION="3.8.10"
 PYTHON_DIR="$BUILD_DIR/python"
+
 echo "-----> Installing Python $PYTHON_VERSION..."
 mkdir -p "$PYTHON_DIR"
 curl -o "$PYTHON_DIR/python.tgz" "https://www.python.org/ftp/python/$PYTHON_VERSION/Python-$PYTHON_VERSION.tgz"
@@ -50,38 +53,25 @@ export PATH="$PYTHON_DIR/bin:$PATH"
 cd "$BUILD_DIR"
 rm "$PYTHON_DIR/python.tgz"
 
-### Cleanup: Reduce Slug Size Safely ###
+### Cleanup: Reduce Slug Size ###
 echo "-----> Cleaning up unnecessary files to reduce slug size..."
 
 # Remove unneeded Go files
-#rm -rf "$BUILD_DIR/go/pkg" "$BUILD_DIR/go/src" "$BUILD_DIR/go/misc"
-#rm -rf "$BUILD_DIR/go/bin/godoc" "$BUILD_DIR/go/bin/gofmt"
+#rm -rf "$GO_DIR/pkg" "$GO_DIR/src" "$GO_DIR/misc"
+#rm -rf "$GO_DIR/bin/go"  # Keep only 'go' binary
+
+# Remove unneeded Python files
+rm -rf "$PYTHON_DIR/Python-$PYTHON_VERSION"
+find "$PYTHON_DIR" -name '__pycache__' -type d -exec rm -rf {} +
+"$PYTHON_DIR/bin/python3" -m pip cache purge
+rm -rf "$PYTHON_DIR/lib/python3.8/test"
+rm -rf "$PYTHON_DIR/lib/python3.8/lib2to3"
 
 # Remove unnecessary Java files
-rm -rf "$JDK_DIR/demo" "$JDK_DIR/sample" "$JDK_DIR/man" "$JDK_DIR/lib/src.zip"
-
-# Verify Python is installed before cleaning up
-if [ -x "$PYTHON_DIR/bin/python3" ]; then
-    echo "Python is installed, proceeding with cleanup..."
-    find "$PYTHON_DIR" -name '__pycache__' -type d -exec rm -rf {} +
-    rm -rf "$PYTHON_DIR/lib/python3.8/test"
-    rm -rf "$PYTHON_DIR/lib/python3.8/lib2to3"
-    rm -rf "$PYTHON_DIR/lib/python3.8/ensurepip"
-    rm -rf "$PYTHON_DIR/lib/python3.8/idlelib"
-    rm -rf "$PYTHON_DIR/lib/python3.8/tkinter"
-
-    # Purge pip cache safely
-    if "$PYTHON_DIR/bin/python3" -m pip cache dir &>/dev/null; then
-        "$PYTHON_DIR/bin/python3" -m pip cache purge || true
-    fi
-else
-    echo "Python installation not found! Skipping cleanup."
-fi
+rm -rf "$JDK_DIR/man" "$JDK_DIR/lib/src.zip"
 
 # Remove temp files
 rm -rf /tmp/* "$BUILD_DIR/tmp/*"
-
-echo "-----> Cleanup complete."
 
 ### Verify installations ###
 echo "-----> Installed Versions:"
@@ -89,5 +79,4 @@ echo "-----> Installed Versions:"
 echo "Java: $(java -version 2>&1 | head -n 1 || echo 'Java not found')"
 echo "Python: $(python3 --version || echo 'Python not found')"
 
-
-echo "-----> Buildpack compilation complete"
+echo "-----> Build complete in $BUILD_DIR"
