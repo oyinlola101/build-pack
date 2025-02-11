@@ -1,124 +1,72 @@
 #!/usr/bin/env bash
+# bin/compile <build-dir> <cache-dir> <env-dir>
 
-# Fail script on any error, undefined variable, or pipe failure
-set -euo pipefail
+set -e
 
-# Default directories with documentation
-BUILD_DIR="${1:-/tmp/build}"
-CACHE_DIR="${2:-/tmp/cache}"
-export DEBIAN_FRONTEND=noninteractive
+BUILD_DIR=$1
+CACHE_DIR=$2
+ENV_DIR=$3
 
-# Logger function for consistent output
-log() {
-    echo "-----> $1"
+function topic() {
+  echo "-----> $*"
 }
 
-# Error handler
-error_handler() {
-    local line_no=$1
-    local error_code=$2
-    log "Error on line ${line_no}: Command exited with status ${error_code}"
-    exit 1
-}
-trap 'error_handler ${LINENO} $?' ERR
-
-# Function to download and verify files
-download_file() {
-    local url=$1
-    local output=$2
-    local max_retries=3
-    local retry_count=0
-    
-    while [ $retry_count -lt $max_retries ]; do
-        if curl -L --fail -o "$output" "$url"; then
-            return 0
-        fi
-        retry_count=$((retry_count + 1))
-        log "Download failed, retrying ($retry_count/$max_retries)..."
-        sleep 2
-    done
-    return 1
+function indent() {
+  c='s/^/       /'
+  case $(uname) in
+    Darwin) sed -l "$c";;
+    *)      sed -u "$c";;
+  esac
 }
 
-# Create necessary directories
-mkdir -p "$BUILD_DIR" "$CACHE_DIR"
-log "Installing dependencies in $BUILD_DIR..."
+# Store which versions we're installing
+APT_CACHE_DIR="$CACHE_DIR/apt/cache"
+APT_STATE_DIR="$CACHE_DIR/apt/state"
+APT_SOURCELIST_DIR="$CACHE_DIR/apt/sources"   
 
-### Install Java (OpenJDK) ###
-JDK_VERSION="11"
-JDK_DIR="$BUILD_DIR/jdk"
-JDK_URL="https://api.adoptium.net/v3/binary/latest/$JDK_VERSION/ga/linux/x64/jdk/hotspot/normal/eclipse"
+mkdir -p "$APT_CACHE_DIR/archives/partial"
+mkdir -p "$APT_STATE_DIR/lists/partial"
+mkdir -p "$APT_SOURCELIST_DIR"
 
-log "Installing Java (OpenJDK) $JDK_VERSION..."
-if ! download_file "$JDK_URL" "jdk.tar.gz"; then
-    log "Failed to download JDK"
-    exit 1
-fi
+# Install basic build tools
+topic "Installing build tools"
+apt-get update
+apt-get install -y build-essential gcc g++ make cmake | indent
 
-mkdir -p "$JDK_DIR"
-if ! tar -xzf jdk.tar.gz -C "$JDK_DIR" --strip-components=1; then
-    log "Error extracting JDK"
-    exit 1
-fi
+# Install Python
+topic "Installing Python"
+PYTHON_VERSION="3.9.16"
+apt-get install -y python3.9 python3.9-dev python3-pip python3.9-venv | indent
 
-export JAVA_HOME="$JDK_DIR"
-export PATH="$JAVA_HOME/bin:$PATH"
-rm jdk.tar.gz
+# Create and activate virtual environment
+python3.9 -m venv $BUILD_DIR/.venv
+source $BUILD_DIR/.venv/bin/activate
 
-### Install Python ###
-PYTHON_VERSION="3.8.10"
-PYTHON_DIR="$BUILD_DIR/python"
-PYTHON_CACHE_DIR="$CACHE_DIR/python"
-log "Installing Python $PYTHON_VERSION..."
+# Install Java
+topic "Installing Java"
+apt-get install -y openjdk-11-jdk | indent
 
-mkdir -p "$PYTHON_DIR" "$PYTHON_CACHE_DIR"
-PYTHON_TAR="Python-$PYTHON_VERSION.tgz"
-PYTHON_URL="https://www.python.org/ftp/python/$PYTHON_VERSION/$PYTHON_TAR"
+# Set environment variables that will persist
+mkdir -p $BUILD_DIR/.profile.d
 
-if ! download_file "$PYTHON_URL" "$PYTHON_CACHE_DIR/$PYTHON_TAR"; then
-    log "Failed to download Python"
-    exit 1
-fi
-
-tar -xzf "$PYTHON_CACHE_DIR/$PYTHON_TAR" -C "$PYTHON_DIR"
-cd "$PYTHON_DIR/Python-$PYTHON_VERSION"
-
-# Configure with minimal features for smaller size
-./configure \
-    --prefix="$PYTHON_DIR" \
-    --enable-shared \
-    --with-ensurepip=install \
-    --without-doc-strings \
-    --without-pymalloc \
-    --disable-test-modules \
-    --disable-ipv6 \
-    CFLAGS="-fPIC -O2 -pipe"
-
-make -j "$(nproc)"
-make install
-cd "$BUILD_DIR"
-
-### Aggressive cleanup to reduce slug size ###
-log "Cleaning up to reduce slug size..."
-
-
-
-### Verify installations ###
-log "Installed Versions:"
-if ! java -version 2>&1; then
-    log "Warning: Java installation verification failed"
-fi
-
-if ! python3 --version; then
-    log "Warning: Python installation verification failed"
-fi
-
-# Export environment variables
-cat > "$BUILD_DIR/env.sh" << EOF
-export JAVA_HOME="$JDK_DIR"
-export PATH="$JAVA_HOME/bin:$PYTHON_DIR/bin:\$PATH"
-export PYTHONPATH="$PYTHON_DIR/lib/python3.8/site-packages:\$PYTHONPATH"
+cat << EOF > $BUILD_DIR/.profile.d/configure_env.sh
+export PATH="\$HOME/.venv/bin:\$PATH"
+export JAVA_HOME="/usr/lib/jvm/java-11-openjdk-amd64"
+export PATH="\$JAVA_HOME/bin:\$PATH"
+export PYTHONPATH="\$HOME"
 EOF
 
-log "Build complete in $BUILD_DIR"
-log "Source env.sh to use the installed tools"
+# Install any Python dependencies if requirements.txt exists
+if [ -f $BUILD_DIR/requirements.txt ]; then
+    topic "Installing Python dependencies"
+    pip install -r $BUILD_DIR/requirements.txt | indent
+fi
+
+# Clean up cache to reduce slug size
+topic "Cleaning up"
+apt-get clean
+rm -rf $APT_CACHE_DIR/*
+rm -rf $APT_STATE_DIR/*
+rm -rf /var/lib/apt/lists/*.*
+
+topic "Complete!"
