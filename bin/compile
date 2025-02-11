@@ -71,7 +71,7 @@ echo "-----> Cleaning up unnecessary files to reduce slug size..."
 #rm -rf "$JDK_DIR/man" "$JDK_DIR/lib/src.zip"
 
 # Remove temp files
-rm -rf /tmp/* "$BUILD_DIR/tmp/*"
+#rm -rf /tmp/* "$BUILD_DIR/tmp/*"
 
 ### Verify installations ###
 echo "-----> Installed Versions:"
